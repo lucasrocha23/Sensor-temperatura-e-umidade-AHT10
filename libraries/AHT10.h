@@ -4,6 +4,10 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h>     
 #include <Wire.h>
+#include <lcd.h>
+#include "lcd.h"
+#include <string.h>
+#include <util/delay.h>
 
 #define AHT10_ENDERECO_0X38  0x38  
 #define COMANDO_INIT_AHT10   0xE1  
@@ -38,6 +42,8 @@ class AHT10
         float   converteKelvinParaFahrenheit(float TEMPE_KELVINS);
         float   converteFahrenheitParaKelvin(float TEMPE_FAHRENHEIT);
         bool    setModoNormal();
+        void    exibeTempUmidade();
+        void    exibeTempUmidade(int modoTemperatura);
 
     private:
         uint8_t _endereco;

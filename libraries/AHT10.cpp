@@ -1,5 +1,7 @@
 #include "AHT10.h"
 
+LCD lcd;
+
 AHT10::AHT10(uint8_t endereco) {
    _endereco = endereco;
 }
@@ -7,6 +9,9 @@ AHT10::AHT10(uint8_t endereco) {
 
 /***********************************************************************/
 bool AHT10::setModoNormal(){
+    char end[sizeof(uint8_t)];
+
+
     Wire.beginTransmission(_endereco);
 
     #if (ARDUINO) >= 100
@@ -19,11 +24,16 @@ bool AHT10::setModoNormal(){
     Wire.send(0x00);
     #endif
 
-    if (Wire.endTransmission(true) != 0)
-        return false; //safety check, make sure transmission complete
 
-    delay(delay_comandos);
+    if (Wire.endTransmission(true) != 0){
+        return false; //safety check, make sure transmission complete
+    }
     
+
+    _delay_ms(delay_comandos);
+    
+  
+
     return true;
 }
 /***********************************************************************/
@@ -32,11 +42,26 @@ bool AHT10::setModoNormal(){
 
 bool AHT10::begin(void) {
     Wire.begin();
-    Wire.setClock(100000);  
-    
-    delay(delay_inicializacao);    //wait for sensor to initialize 
+    Wire.setClock(100000);
 
+    lcd.LCD_Initializer();
+    lcd.LCD_String("iniciando");
+    _delay_ms(200);
+    lcd.LCD_Clear();
+    lcd.LCD_String("iniciando.");
+    _delay_ms(200);
+    lcd.LCD_Clear();
+    lcd.LCD_String("iniciando..");
+    _delay_ms(200);
+    lcd.LCD_Clear();
+    lcd.LCD_String("iniciando...");
+    _delay_ms(200);
+    lcd.LCD_Clear();
+    
+    _delay_ms(delay_inicializacao);    //wait for sensor to initialize 
     setModoNormal();                //one measurement+sleep mode
+
+    
 
     return habilitaFactoryCalCoeff(); 
 }
@@ -60,7 +85,7 @@ uint8_t AHT10::lerDadosRaw(){
     if (Wire.endTransmission(true) != 0) return AHT10_ERRO;                    //erro, houve colisão no barramento I2C
 
     if (getBitCalibracao() != 0x01)      return AHT10_ERRO;            
-    if (getBusyBit(AHT10_USAR_DADO_LIDO) != 0x00) delay(delay_medicao); //measurement delay
+    if (getBusyBit(AHT10_USAR_DADO_LIDO) != 0x00) _delay_ms(delay_medicao); //measurement delay
 
     /* ler 6 bits do sensor */
     Wire.requestFrom((int)_endereco, 6, 1);                                        
@@ -143,12 +168,12 @@ bool AHT10::habilitaFactoryCalCoeff(){
     if (Wire.endTransmission(true) != 0)
         return false;             //safety check, make sure transmission complete
 
-    delay(delay_comandos);
-
+    _delay_ms(delay_comandos);
+    
   /*check calibration enable */
     if (getBitCalibracao() == 0x01) 
         return true;
-
+        
     return false;
 }
 
@@ -174,6 +199,7 @@ uint8_t AHT10::getBitCalibracao(bool lerI2C)
 
     if (_bufferDadosRaw[0] != AHT10_ERRO) 
         return bitRead(_bufferDadosRaw[0], 3); //get 3-rd bit
+        
     
     return AHT10_ERRO;
 }
@@ -192,6 +218,57 @@ uint8_t AHT10::readStatusByte()
   #else
   return Wire.receive();
   #endif
+}
+
+void AHT10:: exibeTempUmidade(){
+  float temperatura = lerTemperatura();
+  float umidade = lerUmidade();
+  char *tempChar, *umidChar, 
+       tempCharFinal[15] = "temperatura: ", 
+       umidCharFinal[15] = "umidade: ";
+
+  sprintf(tempChar, "%.2f", (double)temperatura);
+  sprintf(umidChar, "%.2f", (double)umidade);
+
+  strcat(tempCharFinal, tempChar);
+  strcat(umidCharFinal, umidChar);
+  lcd.LCD_Clear();
+  lcd.LCD_String("chica");
+  lcd.LCD_Commandgiver(0xC0);
+  lcd.LCD_String("leprosa");
+}
+
+void AHT10:: exibeTempUmidade(int unidadeTemp){
+  float temperatura = lerTemperatura();
+  float umidade = lerUmidade();
+  char *tempChar, *umidChar,
+       tempCharFinal[15] = "temperatura: ", 
+       umidCharFinal[15] = "umidade: ";
+
+  switch (unidadeTemp)
+  {
+  case 0:
+    break;
+  case 1:
+    temperatura = converteCelsiusParaFahrenheit(temperatura);
+    break;
+  case 2:
+    temperatura = converteCelsiusParaKelvin(temperatura);
+    break;
+  default:
+    break;
+  }
+   
+  sprintf(tempChar, "%.2f", (double)temperatura);
+  sprintf(umidChar, "%.2f", (double)umidade);
+
+  strcat(tempCharFinal, tempChar);
+  strcat(umidCharFinal, umidChar);
+  lcd.LCD_Clear();
+  lcd.LCD_String(tempCharFinal);
+  lcd.LCD_Commandgiver(0xC0);
+  lcd.LCD_String(umidCharFinal);
+
 }
 
 // ------------------- Funçãoes de Conversão ---------------------- //
